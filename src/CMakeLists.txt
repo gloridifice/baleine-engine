@@ -8,6 +8,8 @@ find_package(Vulkan REQUIRED)
 
 include_directories(${SDL3_INCLUDE_DIRS})
 
+add_subdirectory(baleine_render)
+
 # Exec
 add_executable(BaleineEngine main.cpp
         BaleineEngine.cpp
@@ -22,12 +24,5 @@ add_subdirectory(third_party/vk-bootstrap)
 
 target_include_directories(BaleineEngine PRIVATE third_party/stb_image)
 target_link_libraries(BaleineEngine PRIVATE
-        glfw
-        ${GLFW_LIBRARIES}
-        Vulkan::Vulkan
-        glm::glm
-        SDL3::SDL3
-        GPUOpen::VulkanMemoryAllocator
-        fmt::fmt
-        vk-bootstrap::vk-bootstrap
+        BaleineRender
 )

@@ -4,21 +4,26 @@
 
 #include "BaleineEngine.h"
 
+#include "cassert"
 #include <bits/this_thread_sleep.h>
 
+#include "baleine_render/RenderState.h"
 #include "SDL3/SDL.h"
 #include "SDL3/SDL_vulkan.h"
 
 // #include "vk_types.h"
 // #include "vk_initializers.h"
 
-constexpr bool useValidationLayers = true;
-
 BaleineEngine* LOADED_ENGINE = nullptr;
 
 BaleineEngine& BaleineEngine::get() {
     return *LOADED_ENGINE;
 }
+
+BaleineEngine::BaleineEngine() {
+}
+
+BaleineEngine::~BaleineEngine() = default;
 
 void BaleineEngine::init() {
     assert(LOADED_ENGINE == nullptr);
@@ -29,6 +34,9 @@ void BaleineEngine::init() {
 
     window = SDL_CreateWindow("Baleine Engine", window_extent.width,
                               window_extent.height, window_flags);
+
+    render_state = std::make_unique<RenderState>();
+    render_state->init(*window, window_extent.width, window_extent.height);
 
     is_initialized = true;
 }
@@ -61,10 +69,12 @@ void BaleineEngine::run() {
 }
 
 void BaleineEngine::draw() {
+    render_state->draw();
 }
 
-void BaleineEngine::cleanup() {
+void BaleineEngine::cleanup() const {
     if (is_initialized) {
+        render_state->cleanup();
         SDL_DestroyWindow(window);
     }
 
