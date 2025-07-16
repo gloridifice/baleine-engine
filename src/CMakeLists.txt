@@ -9,11 +9,13 @@ find_package(Vulkan REQUIRED)
 include_directories(${SDL3_INCLUDE_DIRS})
 
 add_subdirectory(baleine_render)
+add_subdirectory(baleine_type)
 
 # Exec
 add_executable(BaleineEngine main.cpp
         BaleineEngine.cpp
-        BaleineEngine.h)
+        BaleineEngine.h
+        )
 
 add_subdirectory(third_party/glfw-3.4)
 SET(GLM_TEST_ENABLE OFF CACHE BOOL "GLM Build unit tests")

@@ -2,7 +2,9 @@
 // Created by yifanlin on 2025/7/14.
 //
 
-#include "RenderState.h"
+#define VMA_IMPLEMENTATION
+
+#include "Renderer.h"
 
 #include <SDL3/SDL_vulkan.h>
 #include <SDL3/SDL.h>
@@ -13,16 +15,15 @@
 
 constexpr bool USE_VALIDATION_LAYERS = true;
 
-void RenderState::init(SDL_Window& window, uint32_t width, uint32_t height) {
+void Renderer::init(SDL_Window& window, u32 width, u32 height) {
     init_vulkan(window);
     init_swapchain(width, height);
     init_commands();
     init_sync_structures();
 }
 
-void RenderState::init_vulkan(SDL_Window& window) {
+void Renderer::init_vulkan(SDL_Window& window) {
     vkb::InstanceBuilder builder;
-
 
     auto instance_ret = builder.set_app_name("").request_validation_layers(USE_VALIDATION_LAYERS).
                                 use_default_debug_messenger().require_api_version(1, 3, 0).build();
@@ -56,13 +57,23 @@ void RenderState::init_vulkan(SDL_Window& window) {
 
     queue = vkb_device.get_queue(vkb::QueueType::graphics).value();
     queue_family = vkb_device.get_queue_index(vkb::QueueType::graphics).value();
+
+    // Initialize the memory allocator
+    VmaAllocatorCreateInfo allocator_create_info {};
+    allocator_create_info.physicalDevice = chosen_gpu;
+    allocator_create_info.device = device;
+    allocator_create_info.instance = instance;
+    allocator_create_info.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+    vmaCreateAllocator(&allocator_create_info, &allocator);
+
+    main_deletion_queue.push_function([&] { vmaDestroyAllocator(allocator); });
 }
 
-void RenderState::init_swapchain(uint32_t width, uint32_t height) {
+void Renderer::init_swapchain(u32 width, u32 height) {
     create_swapchain(width, height);
 }
 
-void RenderState::init_commands() {
+void Renderer::init_commands() {
     VkCommandPoolCreateInfo command_pool_create_info =
         vkinit::command_pool_create_info(queue_family, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
@@ -76,7 +87,7 @@ void RenderState::init_commands() {
     }
 }
 
-void RenderState::init_sync_structures() {
+void Renderer::init_sync_structures() {
     auto fence_create_info =
         vkinit::fence_create_info(VK_FENCE_CREATE_SIGNALED_BIT);
 
@@ -90,12 +101,12 @@ void RenderState::init_sync_structures() {
     }
 }
 
-void RenderState::draw() {
+void Renderer::draw() {
     // Timeout = 1s
     VK_CHECK(vkWaitForFences(device, 1, &get_current_frame().render_fence, true, 1000000000));
     VK_CHECK(vkResetFences(device, 1, &get_current_frame().render_fence));
 
-    uint32_t swapchain_image_index;
+    u32 swapchain_image_index;
     VK_CHECK(
         vkAcquireNextImageKHR(device, swapchain, 1000000000, get_current_frame().swapchain_semaphore, nullptr, &
             swapchain_image_index));
@@ -109,20 +120,23 @@ void RenderState::draw() {
 
     VK_CHECK(vkBeginCommandBuffer(cmd, &command_buffer_begin_info));
 
-    auto& current_image = swapchain_images[swapchain_image_index];
+    draw_extent.width = draw_image.extent.width;
+    draw_extent.height = draw_image.extent.height;
 
-    vkutils::transition_image(cmd, current_image,
-                              VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
-    const float flash = std::abs(std::sin(static_cast<float>(frame_number) / 120.0f));
-    const VkClearColorValue clear_color{{0.0f, 0.0f, flash, 1.0f}};
+    vkutils::transition_image(cmd, draw_image.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
 
-    const auto clear_range = vkinit::image_subresource_range(VK_IMAGE_ASPECT_COLOR_BIT);
+    // ===== Draw =====
+    draw_background(cmd);
+    // ================
 
-    vkCmdClearColorImage(cmd, current_image,
-                         VK_IMAGE_LAYOUT_GENERAL, &clear_color, 1, &clear_range);
+    // ----- Copy draw image to swapchain image -----
+    vkutils::transition_image(cmd, draw_image.image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+    vkutils::transition_image(cmd, swapchain_images[swapchain_image_index], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-    vkutils::transition_image(cmd, current_image,
-                              VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+    vkutils::copy_image_to_image(cmd, draw_image.image, swapchain_images[swapchain_image_index], draw_extent, swapchain_extent);
+
+    vkutils::transition_image(cmd, swapchain_images[swapchain_image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+    // -----------------------------------------------
 
     VK_CHECK(vkEndCommandBuffer(cmd));
 
@@ -145,10 +159,22 @@ void RenderState::draw() {
 
     VK_CHECK(vkQueuePresentKHR(queue, &present_info));
 
+    frame_deletion_queue.flush();
+
     frame_number++;
 }
 
-void RenderState::create_swapchain(uint32_t width, uint32_t height) {
+void Renderer::draw_background(VkCommandBuffer cmd) {
+    const float flash = std::abs(std::sin(static_cast<float>(frame_number) / 120.0f));
+    const VkClearColorValue clear_color{{0.0f, 0.0f, flash, 1.0f}};
+
+    const auto clear_range = vkinit::image_subresource_range(VK_IMAGE_ASPECT_COLOR_BIT);
+
+    vkCmdClearColorImage(cmd, draw_image.image,
+                         VK_IMAGE_LAYOUT_GENERAL, &clear_color, 1, &clear_range);
+}
+
+void Renderer::create_swapchain(u32 width, u32 height) {
     vkb::SwapchainBuilder swapchain_builder{chosen_gpu, device, surface};
     swapchain_image_format = VK_FORMAT_B8G8R8A8_UNORM;
 
@@ -167,9 +193,40 @@ void RenderState::create_swapchain(uint32_t width, uint32_t height) {
 
     swapchain_images = vkb_swapchain.get_images().value();
     swapchain_image_views = vkb_swapchain.get_image_views().value();
+
+    VkExtent3D extent {
+        width,
+        height,
+        1
+    };
+
+    draw_image.format = VK_FORMAT_R16G16B16A16_SFLOAT;
+    draw_image.extent = extent;
+
+    VkImageUsageFlags draw_image_flags {};
+    draw_image_flags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+    draw_image_flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    draw_image_flags |= VK_IMAGE_USAGE_STORAGE_BIT;
+    draw_image_flags |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+    auto image_create_info = vkinit::image_create_info(draw_image.format, draw_image_flags, extent);
+
+    VmaAllocationCreateInfo allocation_create_info {};
+    allocation_create_info.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+    allocation_create_info.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    vmaCreateImage(allocator, &image_create_info, &allocation_create_info, &draw_image.image, &draw_image.allocation, nullptr);
+    auto view_create_info = vkinit::imageview_create_info(draw_image.format, draw_image.image, VK_IMAGE_ASPECT_COLOR_BIT);
+
+    VK_CHECK(vkCreateImageView(device, &view_create_info, nullptr, &draw_image.view));
+
+    main_deletion_queue.push_function([this] {
+        vkDestroyImageView(device, draw_image.view, nullptr);
+        vmaDestroyImage(allocator, draw_image.image, draw_image.allocation);
+    });
 }
 
-void RenderState::destroy_swapchain() {
+void Renderer::destroy_swapchain() {
     vkDestroySwapchainKHR(device, swapchain, nullptr);
 
     for (auto& swapchain_image_view : swapchain_image_views) {
@@ -177,7 +234,7 @@ void RenderState::destroy_swapchain() {
     }
 }
 
-void RenderState::cleanup() {
+void Renderer::cleanup() {
     vkDeviceWaitIdle(device);
 
     // Cleanup
@@ -188,9 +245,7 @@ void RenderState::cleanup() {
         vkDestroySemaphore(device, frames->swapchain_semaphore, nullptr);
     }
 
-    for (auto& frame : frames) {
-        vkDestroyCommandPool(device, frame.command_pool, nullptr);
-    }
+    main_deletion_queue.flush();
 
     destroy_swapchain();
     vkDestroySurfaceKHR(instance, surface, nullptr);

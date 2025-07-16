@@ -6,7 +6,7 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 
-class RenderState;
+class Renderer;
 
 class BaleineEngine {
 public:
@@ -18,7 +18,7 @@ public:
     VkExtent2D window_extent { 1600, 900 };
 
     struct SDL_Window* window { nullptr };
-    std::unique_ptr<RenderState> render_state;
+    std::unique_ptr<Renderer> render_state;
 
     BaleineEngine();
     ~BaleineEngine();

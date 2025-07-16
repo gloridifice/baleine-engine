@@ -4,10 +4,15 @@
 
 #pragma once
 
-#include <vector>
+#include <deque>
+#include <functional>
 #include <string>
 #include <fmt/core.h>
 #include <vulkan/vulkan.h>
+
+#include "AllocatedImage.h"
+#include "../baleine_type/primitive.h"
+#include "../baleine_type/vector.h"
 
 #define VK_CHECK(x)                                                     \
 do {                                                                \
@@ -38,6 +43,12 @@ struct fmt::formatter<VkResult> : fmt::formatter<std::string_view> {
     }
 };
 
+struct DescriptorLayoutBuilder {
+    std::vector<VkDescriptorSetLayoutBinding> bindings;
+
+    void add_binding(uint32_t binding);
+};
+
 struct FrameData {
     VkCommandPool command_pool;
     VkCommandBuffer main_command_buffer;
@@ -51,11 +62,28 @@ struct FrameData {
     VkFence render_fence;
 };
 
+class DeletionQueue {
+    std::deque<std::function<void()>> deletors;
+
+public:
+    void push_function(std::function<void()>&& function) {
+        deletors.push_back(function);
+    }
+
+    void flush() {
+        for (auto it = deletors.rbegin(); it != deletors.rend(); it++) {
+            (*it)();
+        }
+
+        deletors.clear();
+    }
+};
+
 constexpr uint32_t FRAME_OVERLAP = 2;
 
 class SDL_Window;
 
-class RenderState {
+class Renderer {
 public:
     VkInstance instance;
     VkDebugUtilsMessengerEXT debug_messenger;
@@ -67,20 +95,30 @@ public:
     VkSwapchainKHR swapchain;
     VkFormat swapchain_image_format;
 
-    std::vector<VkImage> swapchain_images;
-    std::vector<VkImageView> swapchain_image_views;
+    Vec<VkImage> swapchain_images;
+    Vec<VkImageView> swapchain_image_views;
     VkExtent2D swapchain_extent;
 
     // Frame
     FrameData frames[FRAME_OVERLAP];
-    uint32_t frame_number;
+    u32 frame_number;
     VkQueue queue;
-    uint32_t queue_family;
+    u32 queue_family;
+
+    DeletionQueue frame_deletion_queue;
+    DeletionQueue main_deletion_queue;
+
+    VmaAllocator allocator;
+
+    // Draw image
+    AllocatedImage draw_image;
+    VkExtent2D draw_extent;
 
 public:
-    void init(SDL_Window& window, uint32_t width, uint32_t height);
+    void init(SDL_Window& window, u32 width, u32 height);
     void draw();
-    void create_swapchain(uint32_t width, uint32_t height);
+    void draw_background(VkCommandBuffer cmd);
+    void create_swapchain(u32 width, u32 height);
     void cleanup();
 
     FrameData& get_current_frame() {
@@ -89,7 +127,7 @@ public:
 
 private:
     void init_vulkan(SDL_Window& window);
-    void init_swapchain(uint32_t width, uint32_t height);
+    void init_swapchain(u32 width, u32 height);
     void init_commands();
     void init_sync_structures();
 

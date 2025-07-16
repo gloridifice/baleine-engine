@@ -7,7 +7,7 @@
 #include "cassert"
 #include <bits/this_thread_sleep.h>
 
-#include "baleine_render/RenderState.h"
+#include "baleine_render/Renderer.h"
 #include "SDL3/SDL.h"
 #include "SDL3/SDL_vulkan.h"
 
@@ -35,7 +35,7 @@ void BaleineEngine::init() {
     window = SDL_CreateWindow("Baleine Engine", window_extent.width,
                               window_extent.height, window_flags);
 
-    render_state = std::make_unique<RenderState>();
+    render_state = std::make_unique<Renderer>();
     render_state->init(*window, window_extent.width, window_extent.height);
 
     is_initialized = true;
