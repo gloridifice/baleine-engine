@@ -12,6 +12,10 @@ add_library(BaleineVulkan
         CommandBuffer.cpp
         macros/check.h
         macros/bitmask.h
+        vk_shared/vk_initializers.h
+        vk_shared/vk_initializers.cpp
+        vk_shared/vk_utils.h
+        vk_shared/vk_utils.cpp
 )
 
 target_include_directories(BaleineVulkan PUBLIC ${Vulkan_INCLUDE_DIRS})

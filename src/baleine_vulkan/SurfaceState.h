@@ -31,10 +31,12 @@ namespace balkan {
         VkSurfaceKHR surface;
 
         VkSwapchainKHR swapchain;
-        Vec<VkImage> swapchain_images;
-        Vec<VkImageView> swapchain_image_views;
+        Vec<Shared<Image>> swapchain_images;
+        Vec<Shared<ImageView>> swapchain_image_views;
         VkFormat swapchain_format;
         VkExtent2D swapchain_extent;
+
+        u32 current_swapchain_index;
 
         FrameData frames[FRAME_OVERLAP];
 
@@ -53,8 +55,18 @@ namespace balkan {
         );
         ~SurfaceState();
 
-        CommandBuffer& begin_command();
+        CommandBuffer& reset_and_begin_command();
         void submit_command(const CommandBuffer& buffer);
         void present();
+
+        void wait_for_current_fences(u32 timeout = 1000000000);
+        void reset_current_fences();
+
+        void tick_frame_number();
+
+        u32 next_swapchain_index();
+
+        Shared<Image> get_current_swapchain_image();
+        Shared<ImageView> get_current_swapchain_image_view();
     };
 }

@@ -37,17 +37,17 @@ void vkutils::transition_image(VkCommandBuffer cmd, VkImage image, VkImageLayout
     vkCmdPipelineBarrier2(cmd, &dependency_info);
 }
 
-void vkutils::copy_image_to_image(VkCommandBuffer cmd, VkImage source, VkImage destination, VkExtent2D srcSize, VkExtent2D dstSize)
-{
-    VkImageBlit2 blitRegion{ .sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2, .pNext = nullptr };
+void vkutils::copy_image_to_image(VkCommandBuffer cmd, VkImage source, VkImage destination,
+                                  VkExtent3D srcSize, VkExtent3D dstSize) {
+    VkImageBlit2 blitRegion{.sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2, .pNext = nullptr};
 
     blitRegion.srcOffsets[1].x = srcSize.width;
     blitRegion.srcOffsets[1].y = srcSize.height;
-    blitRegion.srcOffsets[1].z = 1;
+    blitRegion.srcOffsets[1].z = srcSize.depth;
 
     blitRegion.dstOffsets[1].x = dstSize.width;
     blitRegion.dstOffsets[1].y = dstSize.height;
-    blitRegion.dstOffsets[1].z = 1;
+    blitRegion.dstOffsets[1].z = srcSize.depth;
 
     blitRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     blitRegion.srcSubresource.baseArrayLayer = 0;
@@ -59,7 +59,7 @@ void vkutils::copy_image_to_image(VkCommandBuffer cmd, VkImage source, VkImage d
     blitRegion.dstSubresource.layerCount = 1;
     blitRegion.dstSubresource.mipLevel = 0;
 
-    VkBlitImageInfo2 blitInfo{ .sType = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2, .pNext = nullptr };
+    VkBlitImageInfo2 blitInfo{.sType = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2, .pNext = nullptr};
     blitInfo.dstImage = destination;
     blitInfo.dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
     blitInfo.srcImage = source;

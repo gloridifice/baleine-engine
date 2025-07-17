@@ -4,10 +4,6 @@ find_package(Vulkan REQUIRED)
 add_library(BaleineRender
         Renderer.h
         Renderer.cpp
-        vk_shared/vk_initializers.h
-        vk_shared/vk_initializers.cpp
-        vk_shared/vk_utils.h
-        vk_shared/vk_utils.cpp
         AllocatedImage.cpp
         AllocatedImage.h
 )

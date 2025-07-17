@@ -416,13 +416,19 @@ namespace balkan {
     public:
         VkImage image;
         Format format;
-        VkExtent3D extent_3d;
-        VmaAllocation allocation;
+        VkExtent3D extent;
 
         VkDevice device;
+
         VmaAllocator allocator;
+        VmaAllocation allocation;
 
         ImageLayout layout = ImageLayout::Undefined;
+
+        explicit Image(VkImage image, Format format, VkExtent3D extent, VkDevice device,
+            VmaAllocation allocation = nullptr,
+            VmaAllocator allocator = nullptr,
+            ImageLayout layout = ImageLayout::Undefined);
 
         ~Image();
 

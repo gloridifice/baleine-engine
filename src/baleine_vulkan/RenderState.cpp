@@ -2,8 +2,9 @@
 
 #include <SDL3/SDL_vulkan.h>
 
+#include "vk_shared/vk_initializers.h"
 #include "VkBootstrap.h"
-#include "../baleine_render/vk_shared/vk_initializers.h"
+#include "macros/check.h"
 
 namespace balkan {
     RenderState::RenderState() {
@@ -39,11 +40,11 @@ namespace balkan {
         allocator_create_info.device = device;
         allocator_create_info.instance = instance;
         allocator_create_info.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
-        vmaCreateAllocator(&allocator_create_info, &allocator);
+        VK_CHECK(vmaCreateAllocator(&allocator_create_info, &allocator));
     }
 
     Shared<Image> RenderState::create_image(ImageCreateInfo&& info) const {
-        const auto image = new Image{};
+        const auto image = std::make_shared<Image>(nullptr, static_cast<Format>(info.format), info.extent, device);
         const auto image_create_info = vkinit::image_create_info(
             info.format, static_cast<VkImageUsageFlags>(info.usages), info.extent);
 
@@ -51,10 +52,9 @@ namespace balkan {
         allocation_create_info.usage = VMA_MEMORY_USAGE_GPU_ONLY;
         allocation_create_info.requiredFlags = static_cast<VkMemoryPropertyFlags>(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-        vmaCreateImage(allocator, &image_create_info, &allocation_create_info, &image->image, &image->allocation,
-                       nullptr);
+        VK_CHECK(vmaCreateImage(allocator, &image_create_info, &allocation_create_info, &image->image, &image->allocation, nullptr));
 
-        return Shared<Image>(image);
+        return image;
     }
 
     Shared<SurfaceState> RenderState::create_surface_by_sdl_window(SDL_Window* window, u32 width, u32 height) {

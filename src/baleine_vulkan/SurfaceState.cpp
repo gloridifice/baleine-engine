@@ -5,7 +5,7 @@
 #include "macros/check.h"
 #include "RenderState.h"
 #include "VkBootstrap.h"
-#include "../baleine_render/vk_shared/vk_initializers.h"
+#include "vk_shared/vk_initializers.h"
 
 balkan::SurfaceState::SurfaceState(
     u32 width,
@@ -13,8 +13,7 @@ balkan::SurfaceState::SurfaceState(
     VkSurfaceKHR surface,
     RenderState& render_state
 ):
-    surface(surface), render_state(render_state) {
-
+    surface(surface), render_state(render_state), current_swapchain_index(0) {
     auto device = render_state.device;
     // Init swapchain
     vkb::SwapchainBuilder swapchain_builder{render_state.physical_device, render_state.device, surface};
@@ -34,8 +33,22 @@ balkan::SurfaceState::SurfaceState(
     swapchain_extent = vkb_swapchain.extent;
     swapchain = vkb_swapchain.swapchain;
 
-    swapchain_images = vkb_swapchain.get_images().value();
-    swapchain_image_views = vkb_swapchain.get_image_views().value();
+    Vec<Shared<Image>> images{};
+    Vec<Shared<ImageView>> image_views{};
+
+    auto vk_images = vkb_swapchain.get_images().value();
+    auto vk_image_views = vkb_swapchain.get_image_views().value();
+
+    for (int i = 0; i < vkb_swapchain.image_count; i++) {
+        auto image = std::make_shared<Image>(vk_images[i], static_cast<Format>(vkb_swapchain.image_format),
+                                             VkExtent3D{vkb_swapchain.extent.width, vkb_swapchain.extent.height, 1},
+                                             device);
+        images.push_back(image);
+        image_views.push_back(std::make_shared<ImageView>(vk_image_views[i], *image));
+    }
+
+    swapchain_images = images;
+    swapchain_image_views = image_views;
 
     // Init command pool and buffer
     VkCommandPoolCreateInfo command_pool_create_info =
@@ -70,7 +83,7 @@ balkan::SurfaceState::~SurfaceState() {
     vkDestroySurfaceKHR(render_state.instance, surface, nullptr);
 }
 
-balkan::CommandBuffer& balkan::SurfaceState::begin_command() {
+balkan::CommandBuffer& balkan::SurfaceState::reset_and_begin_command() {
     auto& command_buffer = *get_current_frame().command_buffer;
     command_buffer.reset();
     command_buffer.begin();
@@ -78,23 +91,44 @@ balkan::CommandBuffer& balkan::SurfaceState::begin_command() {
 }
 
 void balkan::SurfaceState::present() {
-    u32 swapchain_image_index;
-    VK_CHECK(
-        vkAcquireNextImageKHR(render_state.device, swapchain, 1000000000, get_current_frame().swapchain_semaphore,
-            nullptr, &
-            swapchain_image_index));
-
-    VkPresentInfoKHR present_info{
+    const VkPresentInfoKHR present_info{
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
         .pNext = nullptr,
         .waitSemaphoreCount = 1,
         .pWaitSemaphores = &get_current_frame().render_semaphore,
         .swapchainCount = 1,
         .pSwapchains = &swapchain,
-        .pImageIndices = &swapchain_image_index,
+        .pImageIndices = &current_swapchain_index,
     };
 
     vkQueuePresentKHR(render_state.queue, &present_info);
+}
+
+void balkan::SurfaceState::wait_for_current_fences(const u32 timeout) {
+    vkWaitForFences(render_state.device, 1, &get_current_frame().render_fence, true, timeout);
+}
+
+void balkan::SurfaceState::reset_current_fences() {
+    vkResetFences(render_state.device, 1, &get_current_frame().render_fence);
+}
+
+void balkan::SurfaceState::tick_frame_number() {
+    frame_number += 1;
+}
+
+u32 balkan::SurfaceState::next_swapchain_index() {
+    VK_CHECK(vkAcquireNextImageKHR(
+        render_state.device, swapchain, 1000000000, get_current_frame().swapchain_semaphore,
+        nullptr, &current_swapchain_index));
+    return current_swapchain_index;
+}
+
+Shared<balkan::Image> balkan::SurfaceState::get_current_swapchain_image() {
+    return swapchain_images[current_swapchain_index];
+}
+
+Shared<balkan::ImageView> balkan::SurfaceState::get_current_swapchain_image_view() {
+    return swapchain_image_views[current_swapchain_index];
 }
 
 void balkan::SurfaceState::submit_command(const CommandBuffer& cmd) {
