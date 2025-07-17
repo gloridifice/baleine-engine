@@ -35,9 +35,6 @@ void Renderer::draw() {
 
     auto& current_swapchain_image = *surface_state->get_current_swapchain_image();
 
-    cmd.transition_image(*draw_image, ImageLayout::TransferSrcOptimal);
-    cmd.transition_image(current_swapchain_image, ImageLayout::TransferDstOptimal);
-
     auto extent = surface_state->get_current_swapchain_image()->extent;
     cmd.copy_image_to_image(*draw_image, current_swapchain_image, draw_extent, extent);
 
@@ -52,7 +49,7 @@ void Renderer::draw() {
 }
 
 void Renderer::draw_background(VkCommandBuffer cmd) {
-    const float flash = std::abs(std::sin(static_cast<float>(frame_number) / 120.0f));
+    const float flash = std::abs(std::sin(static_cast<float>() / 120.0f));
     const VkClearColorValue clear_color{{0.0f, 0.0f, flash, 1.0f}};
 
     const auto clear_range = vkinit::image_subresource_range(VK_IMAGE_ASPECT_COLOR_BIT);
