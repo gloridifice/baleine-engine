@@ -1,4 +1,6 @@
 ﻿
+find_package(Vulkan REQUIRED)
+
 add_library(BaleineRender
         Renderer.h
         Renderer.cpp

@@ -6,8 +6,11 @@ namespace balkan {
         vmaDestroyImage(allocator, image, allocation);
     }
 
+    ImageView::ImageView(VkImageView view, Image& image) : view(view), image(image){
+    }
+
     ImageView::~ImageView() {
-        vkDestroyImageView(image->device, view, nullptr);
+        vkDestroyImageView(image.device, view, nullptr);
     }
 }
 

@@ -8,6 +8,7 @@ find_package(Vulkan REQUIRED)
 
 include_directories(${SDL3_INCLUDE_DIRS})
 
+add_subdirectory(baleine_vulkan)
 add_subdirectory(baleine_render)
 add_subdirectory(baleine_type)
 
@@ -27,4 +28,6 @@ add_subdirectory(third_party/vk-bootstrap)
 target_include_directories(BaleineEngine PRIVATE third_party/stb_image)
 target_link_libraries(BaleineEngine PRIVATE
         BaleineRender
+        BaleineType
+        BaleineVulkan
 )

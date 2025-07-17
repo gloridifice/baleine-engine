@@ -57,10 +57,10 @@ namespace balkan {
         return Shared<Image>(image);
     }
 
-    Shared<SurfaceState> RenderState::create_surface_by_sdl_window(SDL_Window* window) const {
+    Shared<SurfaceState> RenderState::create_surface_by_sdl_window(SDL_Window* window, u32 width, u32 height) {
         VkSurfaceKHR surface;
         SDL_Vulkan_CreateSurface(window, instance, nullptr, &surface);
-        return std::make_shared<SurfaceState>(instance, surface);
+        return std::make_shared<SurfaceState>(width, height, surface, *this);
     }
 
     RenderState::~RenderState() {
