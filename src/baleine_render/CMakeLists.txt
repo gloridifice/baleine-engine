@@ -4,8 +4,6 @@ find_package(Vulkan REQUIRED)
 add_library(BaleineRender
         Renderer.h
         Renderer.cpp
-        AllocatedImage.cpp
-        AllocatedImage.h
 )
 
 target_include_directories(BaleineRender PUBLIC ${Vulkan_INCLUDE_DIRS})

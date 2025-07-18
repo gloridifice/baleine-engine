@@ -1,35 +1,38 @@
 ﻿#pragma once
 
-#include <vulkan/vulkan.h>
-#include <vk_mem_alloc.h>
 #include <SDL3/SDL.h>
+#include <vk_mem_alloc.h>
 
-#include "Image.h"
-#include "SurfaceState.h"
 #include "../baleine_type/memory.h"
 #include "../baleine_type/primitive.h"
+#include "Image.h"
+#include "Instance.h"
+#include "SurfaceState.h"
 
 namespace balkan {
-    struct ImageCreateInfo {
-        VkFormat format;
-        ImageUsage usages;
-        VkExtent3D extent;
-    };
+struct ImageCreateInfo {
+    ImageFormat format;
+    ImageUsage usages;
+    VkExtent3D extent;
+};
 
-    class RenderState {
-    public:
-        VkInstance instance;
-        VkDevice device;
-        VkPhysicalDevice physical_device;
-        VmaAllocator allocator;
-        VkQueue queue;
+class RenderState {
+  public:
+    Unique<Instance> instance;
+    VkDevice device;
+    VkPhysicalDevice physical_device;
+    VmaAllocator allocator;
+    VkQueue queue;
 
-        u32 queue_family;
+    u32 queue_family;
 
-        RenderState();
-        ~RenderState();
+    RenderState(Unique<Instance>&& moved_instance, VkSurfaceKHR primary_surface);
+    ~RenderState();
 
-        Shared<Image> create_image(ImageCreateInfo&& info) const;
-        Shared<SurfaceState> create_surface_by_sdl_window(SDL_Window* window, u32 width, u32 height);
-    };
-}
+    auto create_image(ImageCreateInfo&& info) const -> Shared<Image>;
+    auto create_surface(VkSurfaceKHR surface, u32 width, u32 height)
+        -> Shared<SurfaceState>;
+
+    void device_wait_idle() const;
+};
+} // namespace balkan

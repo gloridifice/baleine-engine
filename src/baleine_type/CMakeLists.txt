@@ -3,6 +3,7 @@
         primitive.h
         vector.h
         functional.h
+        string.h
 )
 
 set_target_properties(BaleineType PROPERTIES LINKER_LANGUAGE CXX)

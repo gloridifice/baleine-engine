@@ -48,7 +48,6 @@ public:
 public:
     void init(SDL_Window& window, u32 width, u32 height);
     void draw();
-    void draw_background(VkCommandBuffer cmd);
-    void create_swapchain(u32 width, u32 height);
+    void create_draw_image(u32 width, u32 height);
     void cleanup();
 };

@@ -45,11 +45,10 @@ namespace balkan {
         if (keep_dst_layout) transition_image(dst, dst_layout);
     }
 
-    void CommandBuffer::clear_color_image(const Image& image, ImageLayout layout,
+    void CommandBuffer::clear_color_image(const Image& image,
                                           const VkClearColorValue clear_color) const {
         const auto clear_range = vkinit::image_subresource_range(VK_IMAGE_ASPECT_COLOR_BIT);
 
-        vkCmdClearColorImage(cmd, image.image,
-                             static_cast<VkImageLayout>(layout), &clear_color, 1, &clear_range);
+        vkCmdClearColorImage(cmd, image.image, static_cast<VkImageLayout>(image.layout), &clear_color, 1, &clear_range);
     }
 } // balkan

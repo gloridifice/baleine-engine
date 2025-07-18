@@ -16,6 +16,9 @@ add_library(BaleineVulkan
         vk_shared/vk_initializers.cpp
         vk_shared/vk_utils.h
         vk_shared/vk_utils.cpp
+        error.h
+        Instance.cpp
+        Instance.h
 )
 
 target_include_directories(BaleineVulkan PUBLIC ${Vulkan_INCLUDE_DIRS})

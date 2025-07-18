@@ -4,7 +4,6 @@
 
 #include "CommandBuffer.h"
 #include "Image.h"
-#include "../baleine_type/functional.h"
 #include "../baleine_type/memory.h"
 #include "../baleine_type/primitive.h"
 #include "../baleine_type/vector.h"
@@ -16,14 +15,13 @@ namespace balkan {
 
     struct FrameData {
         VkCommandPool command_pool;
-        Unique<CommandBuffer> command_buffer;
+        Unique<CommandBuffer> command_buffer = nullptr;
 
         VkSemaphore swapchain_semaphore, render_semaphore;
         VkFence render_fence;
     };
 
     class SurfaceState {
-
     private:
         // 软件需要保证 RenderState 的生命周期 SurfaceState 长
         RenderState& render_state;
@@ -38,12 +36,12 @@ namespace balkan {
 
         u32 current_swapchain_index;
 
-        FrameData frames[FRAME_OVERLAP];
+        Unique<FrameData> frames[FRAME_OVERLAP] {};
 
         u32 frame_number = 0;
 
-        FrameData& get_current_frame() {
-            return frames[frame_number % FRAME_OVERLAP];
+        [[nodiscard]] FrameData& get_current_frame() const {
+            return *frames[frame_number % FRAME_OVERLAP];
         }
 
     public:
@@ -55,6 +53,8 @@ namespace balkan {
         );
         ~SurfaceState();
 
+        void create_swapchain(u32 width, u32 height, ImageFormat format);
+
         CommandBuffer& reset_and_begin_command();
         void submit_command(const CommandBuffer& buffer);
         void present();
@@ -62,7 +62,16 @@ namespace balkan {
         void wait_for_current_fences(u32 timeout = 1000000000);
         void reset_current_fences();
 
+        void begin_frame() {
+            wait_for_current_fences();
+            reset_current_fences();
+            next_swapchain_index();
+        }
+
         void tick_frame_number();
+        [[nodiscard]] u32 get_frame_number() const {
+            return frame_number;
+        }
 
         u32 next_swapchain_index();
 

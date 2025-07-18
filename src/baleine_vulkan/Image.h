@@ -4,6 +4,7 @@
 
 #include "macros/bitmask.h"
 #include "vk_mem_alloc.h"
+#include "../baleine_type/memory.h"
 #include "../baleine_type/primitive.h"
 
 namespace balkan {
@@ -51,7 +52,7 @@ namespace balkan {
         MaxEnum = 0x7FFFFFFF
     };
 
-    enum class Format : u32 {
+    enum class ImageFormat : u32 {
         Undefined = VK_FORMAT_UNDEFINED,
         R4G4UnormPack8 = VK_FORMAT_R4G4_UNORM_PACK8,
         R4G4B4A4UnormPack16 = VK_FORMAT_R4G4B4A4_UNORM_PACK16,
@@ -415,7 +416,7 @@ namespace balkan {
     class Image {
     public:
         VkImage image;
-        Format format;
+        ImageFormat format;
         VkExtent3D extent;
 
         VkDevice device;
@@ -425,14 +426,14 @@ namespace balkan {
 
         ImageLayout layout = ImageLayout::Undefined;
 
-        explicit Image(VkImage image, Format format, VkExtent3D extent, VkDevice device,
+        explicit Image(VkImage image, ImageFormat format, VkExtent3D extent, VkDevice device,
             VmaAllocation allocation = nullptr,
             VmaAllocator allocator = nullptr,
             ImageLayout layout = ImageLayout::Undefined);
 
         ~Image();
 
-        ImageView create_view();
+        auto create_view() -> Shared<ImageView>;
     };
 
     class ImageView {

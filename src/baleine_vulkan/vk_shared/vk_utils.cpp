@@ -43,11 +43,11 @@ void vkutils::copy_image_to_image(VkCommandBuffer cmd, VkImage source, VkImage d
 
     blitRegion.srcOffsets[1].x = srcSize.width;
     blitRegion.srcOffsets[1].y = srcSize.height;
-    blitRegion.srcOffsets[1].z = srcSize.depth;
+    blitRegion.srcOffsets[1].z = 1;
 
     blitRegion.dstOffsets[1].x = dstSize.width;
     blitRegion.dstOffsets[1].y = dstSize.height;
-    blitRegion.dstOffsets[1].z = srcSize.depth;
+    blitRegion.dstOffsets[1].z = 1;
 
     blitRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     blitRegion.srcSubresource.baseArrayLayer = 0;
