@@ -2,8 +2,6 @@
 
 Hello! This is a game engine project for personal learning powered by C++ and Vulkan.
 
-It's seperated into four part in `src` directory now.
-
 ## Project structure
 
 The root folder is rust project for building C++ project. See the section below.
@@ -12,10 +10,10 @@ The root folder is rust project for building C++ project. See the section below.
 
 `engine/` folder is the real position for engine's sources.
 
-- `baleine_type`: simple type alias lib of STL for this project's naming convention, like `u32 i32 f32 Vec String Unique Shared`;
-- `baleine_vulkan`: vulkan wrapper lib;
-- `baleine_render`: most render features implementation using libs above;
-- `src`: engine executable file source code.
+- `engine/baleine_type`: simple type alias lib of STL for this project's naming convention, like `u32 i32 f32 Vec String Unique Shared`;
+- `engine/baleine_vulkan`: vulkan wrapper lib;
+- `engine/baleine_render`: most render features implementation using libs above;
+- `engine/src`: engine executable file source code.
 
 ## Build & Run
 
