@@ -21,7 +21,7 @@ This project uses a rust project for automatically task and dependencies managem
 
 1. [Install Rust](https://www.rust-lang.org/tools/install) & [Install CMake](https://cmake.org/download/) & [Install Vulkan SDK](https://vulkan.lunarg.com/);
 2. Clone this repository, then run `cargo run` in terminal. It will download third party libs and generate CMakeLists in `engine/third_party/auto/` folder;
-3. Then just open the engine folder by your IDE and run cmake project.
+3. Then just open the `engine/` folder by your IDE and run the cmake project.
 
 ## Dependencies
 
