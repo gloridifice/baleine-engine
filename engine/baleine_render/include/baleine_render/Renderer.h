@@ -49,5 +49,5 @@ public:
     void init(SDL_Window& window, u32 width, u32 height);
     void draw();
     void create_draw_image(u32 width, u32 height);
-    void cleanup();
+    void cleanup() const;
 };

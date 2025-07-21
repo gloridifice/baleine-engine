@@ -10,7 +10,7 @@ balkan::SurfaceState::SurfaceState(
     u32 width,
     u32 height,
     VkSurfaceKHR surface,
-    RenderState& render_state
+    Shared<RenderState>&& render_state
 ) :
     surface(surface),
     render_state(render_state),
@@ -19,7 +19,6 @@ balkan::SurfaceState::SurfaceState(
         frame = std::make_unique<FrameData>();
     }
 
-    auto device = render_state.device;
     // Init swapchain
     create_swapchain(width, height, ImageFormat::R8G8B8A8Unorm);
 
@@ -31,19 +30,16 @@ balkan::SurfaceState::SurfaceState(
         );
 
     for (auto& frame : frames) {
-        VK_CHECK(vkCreateCommandPool(
-            device,
-            &command_pool_create_info,
-            nullptr,
-            &frame->command_pool
-        ));
+        auto command_pool =
+            render_state->device->create_command_pool(command_pool_create_info);
 
         VkCommandBufferAllocateInfo cmd_alloc_info =
             vkinit::command_buffer_allocate_info(frame->command_pool, 1);
 
         VkCommandBuffer buffer;
-        VK_CHECK(vkAllocateCommandBuffers(device, &cmd_alloc_info, &buffer));
-        frame->command_buffer = std::make_unique<CommandBuffer>(buffer);
+        auto command_buffer =
+            command_pool->allocate_command_buffers(cmd_alloc_info);
+        frame->command_buffer = std::move(command_buffer);
     }
 
     // Init sync structures
@@ -75,16 +71,20 @@ balkan::SurfaceState::SurfaceState(
 }
 
 balkan::SurfaceState::~SurfaceState() {
-    auto device = render_state.device;
+    auto vk_device = render_state->device->vk_device;
     for (auto& frame : frames) {
-        vkDestroyCommandPool(device, frame->command_pool, nullptr);
-        vkDestroyFence(device, frame->render_fence, nullptr);
-        vkDestroySemaphore(device, frame->render_semaphore, nullptr);
-        vkDestroySemaphore(device, frame->swapchain_semaphore, nullptr);
+        vkDestroyCommandPool(
+            vk_device,
+            frame->command_pool->vk_command_pool,
+            nullptr
+        );
+        vkDestroyFence(vk_device, frame->render_fence, nullptr);
+        vkDestroySemaphore(vk_device, frame->render_semaphore, nullptr);
+        vkDestroySemaphore(vk_device, frame->swapchain_semaphore, nullptr);
     }
-    vkDestroySwapchainKHR(render_state.device, swapchain, nullptr);
+    vkDestroySwapchainKHR(vk_device, swapchain, nullptr);
     vkDestroySurfaceKHR(
-        render_state.instance->get_vulkan_instance(),
+        render_state->instance->get_vulkan_instance(),
         surface,
         nullptr
     );
@@ -97,8 +97,8 @@ void balkan::SurfaceState::create_swapchain(
 ) {
     swapchain_format = static_cast<VkFormat>(format);
     vkb::SwapchainBuilder swapchain_builder {
-        render_state.physical_device,
-        render_state.device,
+        render_state->physical_device,
+        render_state->device->vk_device,
         surface
     };
 
@@ -134,11 +134,11 @@ void balkan::SurfaceState::create_swapchain(
                 vkb_swapchain.extent.height,
                 1
             },
-            render_state.device
+            render_state->device
         );
         images.push_back(image);
         image_views.push_back(
-            std::make_shared<ImageView>(vk_image_views[i], *image)
+            std::make_shared<ImageView>(vk_image_views[i], image)
         );
     }
 
@@ -169,7 +169,7 @@ void balkan::SurfaceState::present() {
 
 void balkan::SurfaceState::wait_for_current_fences(const u32 timeout) {
     vkWaitForFences(
-        render_state.device,
+        render_state->device->vk_device,
         1,
         &get_current_frame().render_fence,
         true,
@@ -207,7 +207,7 @@ balkan::SurfaceState::get_current_swapchain_image_view() {
 }
 
 void balkan::SurfaceState::submit_command(const CommandBuffer& cmd) {
-    auto cmd_info = vkinit::command_buffer_submit_info(cmd.cmd);
+    auto cmd_info = vkinit::command_buffer_submit_info(cmd.vk_command_buffer);
     auto wait_info = vkinit::semaphore_submit_info(
         VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR,
         get_current_frame().swapchain_semaphore

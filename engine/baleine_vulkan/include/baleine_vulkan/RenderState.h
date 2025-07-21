@@ -2,23 +2,18 @@
 
 #include <vk_mem_alloc.h>
 
-#include "baleine_type/memory.h"
-#include "baleine_type/primitive.h"
+#include "Device.h"
 #include "Image.h"
 #include "Instance.h"
 #include "SurfaceState.h"
+#include "baleine_type/memory.h"
+#include "baleine_type/primitive.h"
 
 namespace balkan {
-struct ImageCreateInfo {
-    ImageFormat format;
-    ImageUsage usages;
-    VkExtent3D extent;
-};
-
-class RenderState {
+class RenderState : EnableSharedFromThis<RenderState>{
   public:
-    Unique<Instance> instance;
-    VkDevice device;
+    Shared<Instance> instance;
+    Shared<Device> device;
     VkPhysicalDevice physical_device;
     VmaAllocator allocator;
     VkQueue queue;
@@ -28,10 +23,7 @@ class RenderState {
     RenderState(Unique<Instance>&& moved_instance, VkSurfaceKHR primary_surface);
     ~RenderState();
 
-    auto create_image(ImageCreateInfo&& info) const -> Shared<Image>;
     auto create_surface(VkSurfaceKHR surface, u32 width, u32 height)
         -> Shared<SurfaceState>;
-
-    void device_wait_idle() const;
 };
 } // namespace balkan

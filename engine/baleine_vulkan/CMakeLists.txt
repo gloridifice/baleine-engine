@@ -9,6 +9,8 @@ add_library(BaleineVulkan
         src/baleine_vulkan/vk_shared/vk_initializers.cpp
         src/baleine_vulkan/vk_shared/vk_utils.cpp
         src/baleine_vulkan/Instance.cpp
+        src/baleine_vulkan/CommandPool.cpp
+        src/baleine_vulkan/Device.cpp
 )
 
 target_link_libraries(BaleineVulkan PUBLIC

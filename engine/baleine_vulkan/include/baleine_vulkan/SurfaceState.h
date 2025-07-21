@@ -1,10 +1,10 @@
 ﻿#pragma once
 
-#include "baleine_type/memory.h"
-#include "baleine_type/vector.h"
-#include "baleine_type/primitive.h"
 #include "CommandBuffer.h"
 #include "Image.h"
+#include "baleine_type/memory.h"
+#include "baleine_type/primitive.h"
+#include "baleine_type/vector.h"
 
 namespace balkan {
     class RenderState;
@@ -12,17 +12,17 @@ namespace balkan {
     constexpr u32 FRAME_OVERLAP = 2;
 
     struct FrameData {
-        VkCommandPool command_pool;
-        Unique<CommandBuffer> command_buffer = nullptr;
+        Shared<CommandPool> command_pool;
+        Shared<CommandBuffer> command_buffer = nullptr;
 
         VkSemaphore swapchain_semaphore, render_semaphore;
         VkFence render_fence;
     };
 
-    class SurfaceState {
+    class SurfaceState : EnableSharedFromThis<SurfaceState>{
     private:
         // 软件需要保证 RenderState 的生命周期 SurfaceState 长
-        RenderState& render_state;
+        Shared<RenderState> render_state;
 
         VkSurfaceKHR surface;
 
@@ -47,7 +47,7 @@ namespace balkan {
             u32 width,
             u32 height,
             VkSurfaceKHR surface,
-            RenderState& render_state
+            Shared<RenderState>&& render_state
         );
         ~SurfaceState();
 

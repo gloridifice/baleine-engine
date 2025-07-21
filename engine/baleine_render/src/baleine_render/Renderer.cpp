@@ -4,7 +4,7 @@
 
 #define VMA_IMPLEMENTATION
 
-#include "../../include/baleine_render/Renderer.h"
+#include "baleine_render/Renderer.h"
 
 #include <SDL3/SDL_vulkan.h>
 
@@ -63,13 +63,13 @@ void Renderer::create_draw_image(u32 width, u32 height) {
         1
     };
 
-    draw_image = render_state->create_image(ImageCreateInfo {
+    draw_image = render_state->device->create_image(ImageCreateInfo {
         ImageFormat::R16G16B16A16Sfloat,
         ImageUsage::TransferDst | ImageUsage::TransferSrc | ImageUsage::Storage | ImageUsage::ColorAttachment,
         extent
     });
 }
 
-void Renderer::cleanup() {
-    render_state->device_wait_idle();
+void Renderer::cleanup() const {
+    render_state->device->wait_idle();
 }

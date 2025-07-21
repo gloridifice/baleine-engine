@@ -1,9 +1,10 @@
 ﻿#pragma once
 
 #include "VkBootstrap.h"
+#include "baleine_type/memory.h"
 
 namespace balkan {
-class Instance {
+class Instance : EnableSharedFromThis<Instance> {
     friend class RenderState;
 
     VkInstance instance;
