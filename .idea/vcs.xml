@@ -2,5 +2,10 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/engine/third_party/auto/fmt" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/engine/third_party/auto/glm" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/engine/third_party/auto/sdl" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/engine/third_party/auto/vk-bootstrap" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/engine/third_party/auto/vma" vcs="Git" />
   </component>
 </project>

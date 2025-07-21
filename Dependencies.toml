@@ -1,0 +1,6 @@
+﻿[dependencies]
+fmt = { url = "https://github.com/fmtlib/fmt.git", tag = "11.2.0" }
+glm = { url = "https://github.com/g-truc/glm.git", tag = "1.0.1", exclude_from_all = true}
+vk-bootstrap = { url = "https://github.com/charles-lunarg/vk-bootstrap.git", tag = "v1.3.302" }
+vma = { url = "https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git", tag = "v3.3.0" }
+sdl = { url = "https://github.com/libsdl-org/SDL.git", tag = "release-3.2.18", exclude_from_all = true }
