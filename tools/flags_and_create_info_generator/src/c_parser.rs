@@ -1,50 +1,319 @@
-use regex::Regex;
+use tree_sitter::{Node, Parser};
 
-pub struct CEnum {
+#[derive(Debug, Clone)]
+pub struct CStruct {
     pub name: String,
-    pub ident_values: Vec<(String, String)>,
+    pub fields: Vec<StructField>,
 }
 
-pub fn parse_c_enums(content: &str) -> anyhow::Result<Vec<CEnum>> {
-    // 编译正则表达式来匹配 C 风格枚举
-    let enum_regex = Regex::new(
-        r"(?x)
-        enum\s+                 # enum 关键字
-        (?P<name>\w+)           # 枚举名称
-        \s*                     # 可选空格
-        \{\s*                   # 开始大括号
-        (?P<fields>[^}]*)       # 枚举字段（排除结束大括号）
-        \}\s*;                  # 结束大括号和分号
-    ",
-    )?;
+#[derive(Debug, Clone)]
+pub struct StructField {
+    pub name: String,
+    pub field_type: String,
+    pub is_pointer: bool,
+    pub is_array: bool,
+    pub array_size: Option<String>,
+}
 
-    let c_enums = enum_regex
-        .captures_iter(&content)
-        .map(|cap| {
-            let name = &cap["name"];
-            let fields = &cap["fields"];
+#[derive(Debug, Clone)]
+pub struct CEnum {
+    pub name: String,
+    pub values: Vec<EnumValue>,
+}
 
-            let mut vec = Vec::<(String, String)>::new();
-            for field in fields.split(',') {
-                let trimmed_field = field.trim();
+#[derive(Debug, Clone)]
+pub struct EnumValue {
+    pub name: String,
+    pub value: Option<String>,
+}
 
-                if trimmed_field.is_empty() {
-                    continue;
-                }
+pub struct CStructEnumParser {
+    parser: Parser,
+}
 
-                if let Some((ident, value)) = trimmed_field.split_once('=') {
-                    let clean_ident = ident.trim();
-                    let clean_value = value.trim().trim_end_matches(',').trim();
-                    vec.push((clean_ident.to_string(), clean_value.to_string()));
+impl CStructEnumParser {
+    pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
+        let mut parser = Parser::new();
+        let language = tree_sitter_c::language();
+        parser.set_language(language)?;
+        Ok(CStructEnumParser { parser })
+    }
+
+    pub fn parse_c_code(
+        &mut self,
+        source_code: &str,
+    ) -> Result<(Vec<CStruct>, Vec<CEnum>), Box<dyn std::error::Error>> {
+        let tree = self.parser.parse(source_code, None).unwrap();
+        let root_node = tree.root_node();
+
+        let mut structs = Vec::new();
+        let mut enums = Vec::new();
+
+        self.extract_declarations(root_node, source_code, &mut structs, &mut enums);
+
+        Ok((structs, enums))
+    }
+
+    fn extract_declarations(
+        &self,
+        node: Node,
+        source_code: &str,
+        structs: &mut Vec<CStruct>,
+        enums: &mut Vec<CEnum>,
+    ) {
+        match node.kind() {
+            "struct_specifier" => {
+                if let Some(c_struct) = self.parse_struct(node, source_code) {
+                    structs.push(c_struct);
                 }
             }
-
-            CEnum {
-                name: name.to_string(),
-                ident_values: vec,
+            "enum_specifier" => {
+                if let Some(c_enum) = self.parse_enum(node, source_code) {
+                    enums.push(c_enum);
+                }
             }
-        })
-        .collect::<Vec<_>>();
+            _ => {
+                // Recursively check children
+                for i in 0..node.child_count() {
+                    if let Some(child) = node.child(i) {
+                        self.extract_declarations(child, source_code, structs, enums);
+                    }
+                }
+            }
+        }
+    }
 
-    Ok(c_enums)
+    fn parse_struct(&self, node: Node, source_code: &str) -> Option<CStruct> {
+        let mut struct_name = String::new();
+        let mut fields = Vec::new();
+
+        for i in 0..node.child_count() {
+            if let Some(child) = node.child(i) {
+                match child.kind() {
+                    "type_identifier" => {
+                        struct_name = self.node_text(child, source_code);
+                    }
+                    "field_declaration_list" => {
+                        fields = self.parse_field_declaration_list(child, source_code);
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        if !struct_name.is_empty() {
+            Some(CStruct {
+                name: struct_name,
+                fields,
+            })
+        } else {
+            None
+        }
+    }
+
+    fn parse_field_declaration_list(&self, node: Node, source_code: &str) -> Vec<StructField> {
+        let mut fields = Vec::new();
+
+        for i in 0..node.child_count() {
+            if let Some(child) = node.child(i) {
+                if child.kind() == "field_declaration" {
+                    if let Some(field) = self.parse_field_declaration(child, source_code) {
+                        fields.push(field);
+                    }
+                }
+            }
+        }
+
+        fields
+    }
+
+    fn parse_field_declaration(&self, node: Node, source_code: &str) -> Option<StructField> {
+        let mut field_type = String::new();
+        let mut field_name = String::new();
+        let mut is_pointer = false;
+        let mut is_array = false;
+        let mut array_size = None;
+
+        for i in 0..node.child_count() {
+            if let Some(child) = node.child(i) {
+                match child.kind() {
+                    "primitive_type" | "type_identifier" => {
+                        field_type = self.node_text(child, source_code);
+                    }
+                    "field_declarator" => {
+                        let (name, ptr, arr, size) =
+                            self.parse_field_declarator(child, source_code);
+                        field_name = name;
+                        is_pointer = ptr;
+                        is_array = arr;
+                        array_size = size;
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        if !field_name.is_empty() && !field_type.is_empty() {
+            Some(StructField {
+                name: field_name,
+                field_type,
+                is_pointer,
+                is_array,
+                array_size,
+            })
+        } else {
+            None
+        }
+    }
+
+    fn parse_field_declarator(
+        &self,
+        node: Node,
+        source_code: &str,
+    ) -> (String, bool, bool, Option<String>) {
+        let mut name = String::new();
+        let mut is_pointer = false;
+        let mut is_array = false;
+        let mut array_size = None;
+
+        for i in 0..node.child_count() {
+            if let Some(child) = node.child(i) {
+                match child.kind() {
+                    "identifier" => {
+                        name = self.node_text(child, source_code);
+                    }
+                    "pointer_declarator" => {
+                        is_pointer = true;
+                        // Recursively parse the pointer declarator
+                        let (inner_name, _, inner_arr, inner_size) =
+                            self.parse_field_declarator(child, source_code);
+                        if !inner_name.is_empty() {
+                            name = inner_name;
+                        }
+                        is_array = inner_arr;
+                        array_size = inner_size;
+                    }
+                    "array_declarator" => {
+                        is_array = true;
+                        let (inner_name, inner_ptr, _, inner_size) =
+                            self.parse_array_declarator(child, source_code);
+                        if !inner_name.is_empty() {
+                            name = inner_name;
+                        }
+                        is_pointer = inner_ptr;
+                        array_size = inner_size;
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        (name, is_pointer, is_array, array_size)
+    }
+
+    fn parse_array_declarator(
+        &self,
+        node: Node,
+        source_code: &str,
+    ) -> (String, bool, bool, Option<String>) {
+        let mut name = String::new();
+        let mut is_pointer = false;
+        let mut array_size = None;
+
+        for i in 0..node.child_count() {
+            if let Some(child) = node.child(i) {
+                match child.kind() {
+                    "identifier" => {
+                        name = self.node_text(child, source_code);
+                    }
+                    "pointer_declarator" => {
+                        is_pointer = true;
+                        let (inner_name, _, _, _) = self.parse_field_declarator(child, source_code);
+                        if !inner_name.is_empty() {
+                            name = inner_name;
+                        }
+                    }
+                    "number_literal" => {
+                        array_size = Some(self.node_text(child, source_code));
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        (name, is_pointer, true, array_size)
+    }
+
+    fn parse_enum(&self, node: Node, source_code: &str) -> Option<CEnum> {
+        let mut enum_name = String::new();
+        let mut values = Vec::new();
+
+        for i in 0..node.child_count() {
+            if let Some(child) = node.child(i) {
+                match child.kind() {
+                    "type_identifier" => {
+                        enum_name = self.node_text(child, source_code);
+                    }
+                    "enumerator_list" => {
+                        values = self.parse_enumerator_list(child, source_code);
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        if !enum_name.is_empty() {
+            Some(CEnum {
+                name: enum_name,
+                values,
+            })
+        } else {
+            None
+        }
+    }
+
+    fn parse_enumerator_list(&self, node: Node, source_code: &str) -> Vec<EnumValue> {
+        let mut values = Vec::new();
+
+        for i in 0..node.child_count() {
+            if let Some(child) = node.child(i) {
+                if child.kind() == "enumerator" {
+                    if let Some(enum_value) = self.parse_enumerator(child, source_code) {
+                        values.push(enum_value);
+                    }
+                }
+            }
+        }
+
+        values
+    }
+
+    fn parse_enumerator(&self, node: Node, source_code: &str) -> Option<EnumValue> {
+        let mut name = String::new();
+        let mut value = None;
+
+        for i in 0..node.child_count() {
+            if let Some(child) = node.child(i) {
+                match child.kind() {
+                    "identifier" => {
+                        name = self.node_text(child, source_code);
+                    }
+                    "number_literal" => {
+                        value = Some(self.node_text(child, source_code));
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        if !name.is_empty() {
+            Some(EnumValue { name, value })
+        } else {
+            None
+        }
+    }
+
+    fn node_text(&self, node: Node, source_code: &str) -> String {
+        source_code[node.start_byte()..node.end_byte()].to_string()
+    }
 }
