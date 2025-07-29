@@ -1,5 +1,5 @@
 [package]
-name = "flags_and_create_info_generator"
+name = "vulkan_header_converter"
 version = "0.1.0"
 edition = "2024"
 
