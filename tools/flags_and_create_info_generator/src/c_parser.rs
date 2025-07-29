@@ -3,16 +3,13 @@ use tree_sitter::{Node, Parser};
 #[derive(Debug, Clone)]
 pub struct CStruct {
     pub name: String,
-    pub fields: Vec<StructField>,
+    pub fields: Vec<CField>,
 }
 
 #[derive(Debug, Clone)]
-pub struct StructField {
-    pub name: String,
+pub struct CField {
     pub field_type: String,
-    pub is_pointer: bool,
-    pub is_array: bool,
-    pub array_size: Option<String>,
+    pub name: String,
 }
 
 #[derive(Debug, Clone)]
@@ -27,16 +24,16 @@ pub struct EnumValue {
     pub value: Option<String>,
 }
 
-pub struct CStructEnumParser {
+pub struct CParser {
     parser: Parser,
 }
 
-impl CStructEnumParser {
+impl CParser {
     pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
         let mut parser = Parser::new();
         let language = tree_sitter_c::language();
         parser.set_language(language)?;
-        Ok(CStructEnumParser { parser })
+        Ok(CParser { parser })
     }
 
     pub fn parse_c_code(
@@ -83,6 +80,29 @@ impl CStructEnumParser {
         }
     }
 
+    // ================== Struct ==============================
+
+    // Helper function to debug node structure
+    fn print_node_structure(&self, node: Node, source_code: &str, depth: usize) {
+        let indent = "  ".repeat(depth);
+        println!(
+            "{}Node: {} = '{}'",
+            indent,
+            node.kind(),
+            self.node_text(node, source_code)
+        );
+
+        for i in 0..node.child_count() {
+            if let Some(child) = node.child(i) {
+                self.print_node_structure(child, source_code, depth + 1);
+            }
+        }
+    }
+
+    fn node_text(&self, node: Node, source_code: &str) -> String {
+        source_code[node.start_byte()..node.end_byte()].to_string()
+    }
+
     fn parse_struct(&self, node: Node, source_code: &str) -> Option<CStruct> {
         let mut struct_name = String::new();
         let mut fields = Vec::new();
@@ -96,7 +116,9 @@ impl CStructEnumParser {
                     "field_declaration_list" => {
                         fields = self.parse_field_declaration_list(child, source_code);
                     }
-                    _ => {}
+                    _ => {
+                        println!("Unhandled child kind: {}", child.kind());
+                    }
                 }
             }
         }
@@ -111,14 +133,22 @@ impl CStructEnumParser {
         }
     }
 
-    fn parse_field_declaration_list(&self, node: Node, source_code: &str) -> Vec<StructField> {
+    fn parse_field_declaration_list(&self, node: Node, source_code: &str) -> Vec<CField> {
         let mut fields = Vec::new();
 
         for i in 0..node.child_count() {
             if let Some(child) = node.child(i) {
-                if child.kind() == "field_declaration" {
-                    if let Some(field) = self.parse_field_declaration(child, source_code) {
-                        fields.push(field);
+                match child.kind() {
+                    "field_declaration" => {
+                        if let Some(field) = self.parse_field_declaration(child, source_code) {
+                            fields.push(field);
+                        }
+                    }
+                    "{" | "}" => {
+                        // Skip braces
+                    }
+                    _ => {
+                        println!("Unhandled field list child: {}", child.kind());
                     }
                 }
             }
@@ -127,121 +157,138 @@ impl CStructEnumParser {
         fields
     }
 
-    fn parse_field_declaration(&self, node: Node, source_code: &str) -> Option<StructField> {
+    fn parse_field_declaration(&self, node: Node, source_code: &str) -> Option<CField> {
         let mut field_type = String::new();
         let mut field_name = String::new();
-        let mut is_pointer = false;
-        let mut is_array = false;
-        let mut array_size = None;
 
         for i in 0..node.child_count() {
             if let Some(child) = node.child(i) {
                 match child.kind() {
-                    "primitive_type" | "type_identifier" => {
+                    // Basic types
+                    "primitive_type" => {
                         field_type = self.node_text(child, source_code);
                     }
-                    "field_declarator" => {
-                        let (name, ptr, arr, size) =
-                            self.parse_field_declarator(child, source_code);
-                        field_name = name;
-                        is_pointer = ptr;
-                        is_array = arr;
-                        array_size = size;
+                    // User-defined types
+                    "type_identifier" => {
+                        if field_type.is_empty() {
+                            field_type = self.node_text(child, source_code);
+                        }
+                    }
+                    // Field name
+                    "field_identifier" => {
+                        field_name = self.node_text(child, source_code);
+                    }
+                    // Sometimes the field name is just an identifier
+                    "identifier" => {
+                        if field_name.is_empty() {
+                            field_name = self.node_text(child, source_code);
+                        }
+                    }
+                    // Handle pointer declarations
+                    "pointer_declarator" => {
+                        if let Some(pointer_info) =
+                            self.parse_pointer_declarator(child, source_code)
+                        {
+                            field_type.push_str(&pointer_info.0); // Add pointer stars
+                            if field_name.is_empty() {
+                                field_name = pointer_info.1; // Get the identifier
+                            }
+                        }
+                    }
+                    // Handle array declarations
+                    "array_declarator" => {
+                        if let Some(array_info) = self.parse_array_declarator(child, source_code) {
+                            field_name = array_info.0;
+                            field_type.push_str(&array_info.1); // Add array brackets
+                        }
+                    }
+                    ";" => {
+                        // Skip semicolon
+                    }
+                    _ => {
+                        println!("Unhandled field declaration child: {}", child.kind());
+                    }
+                }
+            }
+        }
+
+        if !field_type.is_empty() && !field_name.is_empty() {
+            Some(CField {
+                field_type: field_type.trim().to_string(),
+                name: field_name.trim().to_string(),
+            })
+        } else {
+            println!(
+                "Failed to parse field - type: '{}', name: '{}'",
+                field_type, field_name
+            );
+            None
+        }
+    }
+
+    fn parse_pointer_declarator(&self, node: Node, source_code: &str) -> Option<(String, String)> {
+        let mut stars = String::new();
+        let mut identifier = String::new();
+
+        for i in 0..node.child_count() {
+            if let Some(child) = node.child(i) {
+                match child.kind() {
+                    "*" => {
+                        stars.push('*');
+                    }
+                    "identifier" | "field_identifier" => {
+                        identifier = self.node_text(child, source_code);
+                    }
+                    "pointer_declarator" => {
+                        // Nested pointer
+                        if let Some((nested_stars, nested_id)) =
+                            self.parse_pointer_declarator(child, source_code)
+                        {
+                            stars.push_str(&nested_stars);
+                            identifier = nested_id;
+                        }
                     }
                     _ => {}
                 }
             }
         }
 
-        if !field_name.is_empty() && !field_type.is_empty() {
-            Some(StructField {
-                name: field_name,
-                field_type,
-                is_pointer,
-                is_array,
-                array_size,
-            })
+        if !identifier.is_empty() {
+            Some((stars, identifier))
         } else {
             None
         }
     }
 
-    fn parse_field_declarator(
-        &self,
-        node: Node,
-        source_code: &str,
-    ) -> (String, bool, bool, Option<String>) {
-        let mut name = String::new();
-        let mut is_pointer = false;
-        let mut is_array = false;
-        let mut array_size = None;
+    fn parse_array_declarator(&self, node: Node, source_code: &str) -> Option<(String, String)> {
+        let mut identifier = String::new();
+        let mut array_part = String::new();
 
         for i in 0..node.child_count() {
             if let Some(child) = node.child(i) {
                 match child.kind() {
-                    "identifier" => {
-                        name = self.node_text(child, source_code);
+                    "identifier" | "field_identifier" => {
+                        identifier = self.node_text(child, source_code);
                     }
-                    "pointer_declarator" => {
-                        is_pointer = true;
-                        // Recursively parse the pointer declarator
-                        let (inner_name, _, inner_arr, inner_size) =
-                            self.parse_field_declarator(child, source_code);
-                        if !inner_name.is_empty() {
-                            name = inner_name;
-                        }
-                        is_array = inner_arr;
-                        array_size = inner_size;
+                    "[" => {
+                        array_part.push('[');
                     }
-                    "array_declarator" => {
-                        is_array = true;
-                        let (inner_name, inner_ptr, _, inner_size) =
-                            self.parse_array_declarator(child, source_code);
-                        if !inner_name.is_empty() {
-                            name = inner_name;
-                        }
-                        is_pointer = inner_ptr;
-                        array_size = inner_size;
-                    }
-                    _ => {}
-                }
-            }
-        }
-
-        (name, is_pointer, is_array, array_size)
-    }
-
-    fn parse_array_declarator(
-        &self,
-        node: Node,
-        source_code: &str,
-    ) -> (String, bool, bool, Option<String>) {
-        let mut name = String::new();
-        let mut is_pointer = false;
-        let mut array_size = None;
-
-        for i in 0..node.child_count() {
-            if let Some(child) = node.child(i) {
-                match child.kind() {
-                    "identifier" => {
-                        name = self.node_text(child, source_code);
-                    }
-                    "pointer_declarator" => {
-                        is_pointer = true;
-                        let (inner_name, _, _, _) = self.parse_field_declarator(child, source_code);
-                        if !inner_name.is_empty() {
-                            name = inner_name;
-                        }
+                    "]" => {
+                        array_part.push(']');
                     }
                     "number_literal" => {
-                        array_size = Some(self.node_text(child, source_code));
+                        array_part.push_str(&self.node_text(child, source_code));
                     }
                     _ => {}
                 }
             }
         }
 
-        (name, is_pointer, true, array_size)
+        if !identifier.is_empty() {
+            Some((identifier, array_part))
+        } else {
+            None
+        }
     }
 
     fn parse_enum(&self, node: Node, source_code: &str) -> Option<CEnum> {
@@ -311,9 +358,5 @@ impl CStructEnumParser {
         } else {
             None
         }
-    }
-
-    fn node_text(&self, node: Node, source_code: &str) -> String {
-        source_code[node.start_byte()..node.end_byte()].to_string()
     }
 }
