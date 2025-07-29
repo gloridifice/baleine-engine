@@ -45,7 +45,7 @@ impl StringBuilder {
     }
 
     pub fn push_str(&mut self, v: &str) {
-        self.content.push_str("");
+        self.content.push_str(v);
     }
 
     /// Auto tab and \n
@@ -98,31 +98,14 @@ pub static PRIMITIVE_MAP: LazyLock<HashMap<&'static str, &'static str>> = LazyLo
 
 #[derive(Clone)]
 pub enum VkType {
-    VkCreateInfo,
-    VkFlags,
+    VkInfoStruct,
+    VkFlagsEnum,
+    VkNormalStruct,
+    VkNormalEnum,
     VkOthers,
     VkBool32,
     Primitive,
     Others,
-}
-
-pub fn parse_type_name(name: &str) -> VkType {
-    if PRIMITIVE_MAP.contains_key(name) {
-        return VkType::Primitive;
-    }
-    if name == "VkBool32" {
-        return VkType::VkBool32;
-    }
-    if name.starts_with("Vk") {
-        if name.ends_with("Flags") || name.ends_with("FlagBits") {
-            return VkType::VkFlags;
-        }
-        if name.ends_with("CreateInfo") {
-            return VkType::VkCreateInfo;
-        }
-        return VkType::VkOthers;
-    }
-    VkType::Others
 }
 
 fn convert_field_name(field_name: &str) -> String {
@@ -134,25 +117,48 @@ fn convert_field_name(field_name: &str) -> String {
 }
 
 impl VkType {
+    pub fn parse(name: &str) -> Self {
+        if PRIMITIVE_MAP.contains_key(name) {
+            return VkType::Primitive;
+        }
+        if name == "VkBool32" {
+            return VkType::VkBool32;
+        }
+        if name.starts_with("Vk") {
+            if name.ends_with("Flags") || name.ends_with("FlagBits") {
+                return VkType::VkFlagsEnum;
+            }
+            if name.ends_with("CreateInfo") {
+                return VkType::VkInfoStruct;
+            }
+            return VkType::VkOthers;
+        }
+        VkType::Others
+    }
+
     pub fn convert(&self, name: &str) -> String {
+        use VkType::*;
         match self {
-            VkType::VkCreateInfo => name.replace("Vk", ""),
-            VkType::VkFlags => name
+            VkFlagsEnum => name
                 .replace("Vk", "")
                 .replace("Flags", "Flag")
                 .replace("FlagBits", "Flag"),
-            VkType::Primitive => PRIMITIVE_MAP.get(name).unwrap().to_string(),
-            VkType::Others => name.to_string(),
-            VkType::VkOthers => name.to_string(),
-            VkType::VkBool32 => "bool".to_string(),
+            Primitive => PRIMITIVE_MAP.get(name).unwrap().to_string(),
+            Others => name.to_string(),
+            VkOthers => name.to_string(),
+            VkBool32 => "bool".to_string(),
+            VkInfoStruct | VkNormalStruct | VkNormalEnum => name.replace("Vk", ""),
         }
     }
 
     pub fn cast_variable(&self, raw_type_name: &str, new_variable_name: &str) -> String {
+        use VkType::*;
         match self {
-            VkType::VkCreateInfo => format!("{}.raw()", new_variable_name),
-            VkType::VkFlags => format!("static_cast<{}>({})", raw_type_name, new_variable_name),
-            VkType::VkBool32 => format!("static_cast<VkBool32>({})", new_variable_name),
+            VkInfoStruct | VkNormalStruct => format!("{}.raw()", new_variable_name),
+            VkFlagsEnum | VkNormalEnum => {
+                format!("static_cast<{}>({})", raw_type_name, new_variable_name)
+            }
+            VkBool32 => format!("static_cast<VkBool32>({})", new_variable_name),
             _ => new_variable_name.to_string(),
         }
     }

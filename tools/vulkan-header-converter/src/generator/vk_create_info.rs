@@ -1,6 +1,6 @@
 use crate::{
     c_parser::CStruct,
-    generator::{ElementsGenerator, StringBuilder, VkType, convert_field_name, parse_type_name},
+    generator::{ElementsGenerator, StringBuilder, VkType, convert_field_name},
     str_utils::camel_to_snake,
 };
 
@@ -14,11 +14,11 @@ impl ElementsGenerator<CStruct> for VkCreateInfoGenerator {
             return None;
         }
 
-        let VkType::VkCreateInfo = parse_type_name(&element.name) else {
+        let VkType::VkInfoStruct = VkType::parse(&element.name) else {
             return None;
         };
 
-        let new_name = VkType::VkCreateInfo.convert(&name);
+        let new_name = VkType::VkInfoStruct.convert(&name);
 
         // struct
         ret.scope(&format!("struct {}", &new_name), true, |ret| {
@@ -26,7 +26,7 @@ impl ElementsGenerator<CStruct> for VkCreateInfoGenerator {
                 .iter()
                 .skip(2)
                 .map(|it| {
-                    let ty = parse_type_name(&it.field_type);
+                    let ty = VkType::parse(&it.field_type);
                     let converted_field_type = ty.convert(&it.field_type);
                     let converted_field_name = convert_field_name(&it.name);
                     (it, ty, converted_field_type, converted_field_name)
