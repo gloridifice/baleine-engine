@@ -1,3 +1,11 @@
+use vulkan_header_converter::{c_parser::CParser, generator::Generator};
+
 fn main() {
-    todo!()
+    let mut parser = CParser::new().unwrap();
+    let (a, b) = parser
+        .parse_c_code(include_str!("../test_files/all.h"))
+        .unwrap();
+    let generator = Generator::new(b, a);
+    let result = generator.generate();
+    println!("{}", &result);
 }
