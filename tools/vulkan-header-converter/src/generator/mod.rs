@@ -12,6 +12,8 @@ use crate::{
 pub mod vk_enum;
 pub mod vk_struct;
 
+const SUFFIX: [&'static str; 5] = ["", "2", "KHR", "EXT", "NV"];
+
 pub static VK_ENUM_SET: LazyLock<Arc<Mutex<HashSet<String>>>> =
     LazyLock::new(|| Arc::new(Mutex::new(Default::default())));
 
@@ -31,6 +33,12 @@ pub static PRIMITIVE_MAP: LazyLock<HashMap<&'static str, &'static str>> = LazyLo
     .into_iter()
     .collect()
 });
+
+const VK_ENUM_BLACKLIST: LazyLock<HashSet<&'static str>> =
+    LazyLock::new(|| ["VkStructureType"].into_iter().collect());
+
+const VK_STRUCT_BLACKLIST: LazyLock<HashSet<&'static str>> =
+    LazyLock::new(|| [].into_iter().collect());
 
 pub trait ElementsGenerator<T> {
     fn element(&mut self, element: &T, context: &Context) -> Option<String>;
@@ -87,6 +95,18 @@ pub struct Generator {
 
 impl Generator {
     pub fn new(c_enums: Vec<CEnum>, c_structs: Vec<CStruct>) -> Self {
+        let c_enums = c_enums
+            .into_iter()
+            .filter(|it| it.name.starts_with("Vk") && !VK_ENUM_BLACKLIST.contains(it.name.as_str()))
+            .collect();
+
+        let c_structs = c_structs
+            .into_iter()
+            .filter(|it| {
+                it.name.starts_with("Vk") && !VK_STRUCT_BLACKLIST.contains(it.name.as_str())
+            })
+            .collect();
+
         Self {
             context: Context::new(c_enums, c_structs),
         }
@@ -111,10 +131,10 @@ impl Generator {
 }
 
 impl VkEnum {
-    const FLAGS_SUFIX: LazyLock<Vec<String>> = LazyLock::new(|| {
+    const FLAGS_SUFFIX: LazyLock<Vec<String>> = LazyLock::new(|| {
         let mut ret = Vec::new();
         for main in ["Flags", "FlagBits"] {
-            for sufix in ["", "KHR", "EXT"] {
+            for sufix in &SUFFIX {
                 let mut end = main.to_string();
                 end.push_str(sufix);
                 ret.push(end);
@@ -135,7 +155,7 @@ impl VkEnum {
     }
 
     fn parse_type(name: &str) -> VkEnumType {
-        if Self::FLAGS_SUFIX.iter().any(|it| name.ends_with(it)) {
+        if Self::FLAGS_SUFFIX.iter().any(|it| name.ends_with(it)) {
             VkEnumType::Flags
         } else {
             VkEnumType::Normal
@@ -152,20 +172,8 @@ impl VkEnum {
 }
 
 impl VkStruct {
-    const STYPE_SUFIX: LazyLock<Vec<String>> = LazyLock::new(|| {
-        let mut ret = Vec::new();
-        for main in ["Info", "Properties", "Features"] {
-            for sufix in ["", "KHR", "EXT"] {
-                let mut end = main.to_string();
-                end.push_str(sufix);
-                ret.push(end);
-            }
-        }
-        ret
-    });
-
     pub fn new(c_struct: CStruct) -> Self {
-        let ty = Self::parse_type(&c_struct.name);
+        let ty = Self::parse_type(&c_struct);
         let new_name = Self::parse_new_name(&c_struct.name, ty);
 
         Self {
@@ -175,8 +183,8 @@ impl VkStruct {
         }
     }
 
-    fn parse_type(name: &str) -> VkStructType {
-        if Self::STYPE_SUFIX.iter().any(|it| name.ends_with(it)) {
+    fn parse_type(c_struct: &CStruct) -> VkStructType {
+        if c_struct.fields.first().is_some_and(|it| it.name == "sType") {
             VkStructType::SType
         } else {
             VkStructType::Normal

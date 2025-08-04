@@ -59,10 +59,12 @@ where
 pub fn camel_to_snake(input: &str) -> String {
     let mut result = String::new();
 
+    let mut last_char: Option<char> = None;
     for (i, ch) in input.chars().enumerate() {
-        if ch.is_uppercase() && i > 0 {
+        if ch.is_uppercase() && last_char.is_some_and(|it| it.is_lowercase()) && i > 0 {
             result.push('_');
         }
+        last_char = Some(ch);
         result.push(ch.to_lowercase().next().unwrap());
     }
 

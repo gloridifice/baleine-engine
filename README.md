@@ -33,3 +33,7 @@ Fields of a dependency are below:
 - `url`: url of a dependency on GitHub;
 - `tag` or `branch`: which tag or branch to be downloaded of the dependency's git repository;
 - `exclude_from_all`: `bool` define if add `EXCLUDE_FROM_ALL` property for this repository's subdirectory into `CMakeLists.txt`;
+
+## Roadmap
+
+- [ ] Render API

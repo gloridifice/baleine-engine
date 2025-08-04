@@ -1,3 +1,5 @@
+use std::{fs::File, io::Write};
+
 use vulkan_header_converter::{c_parser::CParser, generator::Generator};
 
 fn main() {
@@ -7,5 +9,8 @@ fn main() {
         .unwrap();
     let generator = Generator::new(b, a);
     let result = generator.generate();
-    println!("{}", &result);
+    File::create("test_files/output.h")
+        .unwrap()
+        .write_all(result.as_bytes())
+        .unwrap();
 }
