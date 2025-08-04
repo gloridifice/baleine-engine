@@ -5,6 +5,7 @@ else()
 endif()
 
 add_library(STBImage stb_image/stb_image.h)
+add_subdirectory(bitmask-1.1.1)
 set_target_properties(STBImage PROPERTIES LINKER_LANGUAGE CXX)
 
 find_package(Vulkan REQUIRED)
