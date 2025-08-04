@@ -3,7 +3,6 @@
 
 #include "exception.h"
 #include "functional.h"
-#include "memory.h"
 #include "optional.h"
 
 namespace baleine {
