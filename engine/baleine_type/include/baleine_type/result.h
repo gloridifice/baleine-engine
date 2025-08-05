@@ -3,13 +3,29 @@
 
 #include "exception.h"
 #include "functional.h"
+#include "memory.h"
 #include "optional.h"
 
+
 namespace baleine {
+/**
+ * A rust-like result. It can be a 'value' or an 'error'. It follows the RAII paradigm.
+ * 
+ * - A 'value' contains a T type variable.
+ *  - use static function @c Ok(value) to create a 'value'.
+ * - An 'error' contains an exception.
+ *  - use static function @c Err(exception) to create a 'error'.
+ *
+ * Use @c unwrap() to get the value inside or throw the exception.
+ *
+ * @code
+ *  
+ * @endcode
+ */
 template<typename T>
 class Result {
     Option<T> value;
-    Option<ExceptionPtr> error;
+    Option<Unique<Exception>> error;
 
   private:
     T& get() {
@@ -17,21 +33,21 @@ class Result {
     }
 
     T take() {
-        T val = std::move(value.value());
+        auto v = std::move(value.value());
         value.reset();
-        return val;
+        return v;
     }
 
   public:
-    explicit Result(Option<T>&& value, Option<ExceptionPtr>&& error) :
+    explicit Result(Option<T>&& value, Option<Unique<Exception>>&& error) :
         value(std::move(value)),
         error(std::move(error)) {}
 
-    Result ok(T value) {
+    static Result new_ok(T value) {
         return Result(std::move(value), None);
     }
 
-    Result err(ExceptionPtr exception_ptr) {
+    static Result new_err(Unique<Exception>&& exception_ptr) {
         return Result(None, std::move(exception_ptr));
     }
 
@@ -43,13 +59,25 @@ class Result {
         return error.has_value();
     }
 
-    ExceptionPtr& err() {
-        return error.value();
-    }
-
     void inspect(Fn<void(T&)> fun) {
         if (is_ok())
             fun(get());
+    }
+
+    T& peek() {
+        if (is_err())
+            throw error.value();
+        return get();
+    }
+    
+    Exception& peek_err() const {
+        return *error.value();
+    }
+
+    Unique<Exception> unwrap_err() {
+        auto err = std::move(error.value());
+        error.reset();
+        return err;
     }
 
     T unwrap() {
@@ -64,8 +92,30 @@ class Result {
         return take();
     }
 
+    T unwrap_or_else(Fn<T()> fun) {
+        if (is_err())
+            return fun();
+        return take();
+    }
+
     bool is_valid() const {
         return is_ok() || is_err();
     }
 };
-} // namespace baleine
+
+/**
+ * @return Return a @c Result with given @c T type value.
+ */
+template<typename T>
+static Result<T> Ok(T value) {
+    return Result<T>::new_ok(value);
+}
+
+/**
+ * @return Return a @c Result with given @c Exception.
+ */
+template<typename T>
+static Result<T> Err(Unique<Exception>&& exception) {
+    return Result<T>::new_err(std::move(exception));
+}
+}
