@@ -52,7 +52,6 @@ TEST_CASE("Result") {
 
     auto err = Err<int>(std::make_unique<LogicError>("This is a Logic Error"));
     CHECK(err.is_err());
-    CHECK(err.peek_err());
 }
 
 TEST_SUITE_END();

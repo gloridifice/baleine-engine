@@ -37,7 +37,7 @@ class Device: EnableSharedFromThis<Device> {
 
 public:
     virtual ~Device() = default;
-    virtual Shared<Texture> create_image();
+    virtual Shared<Texture> create_texture();
     virtual Shared<Buffer> create_buffer();
 };
 

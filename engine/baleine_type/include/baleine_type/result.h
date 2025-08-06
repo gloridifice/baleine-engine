@@ -28,6 +28,12 @@ class Result {
     Option<Unique<Exception>> error;
 
   private:
+    void try_throw_error() {
+        if (error.has_value())
+            throw std::move(error.value());
+        error.reset();
+    }
+    
     T& get() {
         return value.value();
     }
@@ -65,8 +71,7 @@ class Result {
     }
 
     T& peek() {
-        if (is_err())
-            throw error.value();
+        try_throw_error();
         return get();
     }
     
@@ -80,9 +85,13 @@ class Result {
         return err;
     }
 
+    Option<T> ok() {
+        if (is_ok()) return std::move(value);
+        return None;
+    }
+
     T unwrap() {
-        if (is_err())
-            throw error.value();
+        try_throw_error();
         return take();
     }
 
