@@ -13,18 +13,11 @@ class Queue;
 class CommandPool;
 class CommandBuffer;
 class Buffer;
-
-
-enum class ResourceState {
-    Created,
-    Initialized,
-    InUse,
-    Destroyed
-};
+class Shader;
 
 class Instance: public EnableSharedFromThis<Instance> {
 public:
-    virtual ~Instance() = default;
+    virtual ~Instance() = 0;
 
     virtual bool initialize() = 0;
     virtual void shutdown() = 0;
@@ -36,13 +29,13 @@ class Device: EnableSharedFromThis<Device> {
     Shared<Instance> instance;
 
 public:
-    virtual ~Device() = default;
-    virtual Shared<Texture> create_texture();
-    virtual Shared<Buffer> create_buffer();
+    virtual ~Device() = 0;
+    virtual Shared<Texture> create_texture() = 0;
+    virtual Shared<Buffer> create_buffer() = 0;
 };
 
 class Buffer: EnableSharedFromThis<Buffer> {
-
+    Shared<Device> device;
 };
 
 class CommandPool: EnableSharedFromThis<CommandPool> {
@@ -50,11 +43,16 @@ class CommandPool: EnableSharedFromThis<CommandPool> {
 };
 
 class Queue: EnableSharedFromThis<Queue> {
-
+    Shared<Device> device;
 };
 
 class CommandBuffer: EnableSharedFromThis<CommandBuffer> {
     Shared<CommandPool> pool;
+
+public:
+    virtual ~CommandBuffer() = 0;
+    virtual void begin_cmd() = 0;
+    virtual void end_cmd() = 0;
 };
 
 class Surface: EnableSharedFromThis<Surface> {
@@ -69,4 +67,8 @@ class Sampler: EnableSharedFromThis<Sampler> {
     Shared<Device> device;
 };
 
-} // namespace baleine
+class Shader: EnableSharedFromThis<Shader> {
+    
+};
+
+}
