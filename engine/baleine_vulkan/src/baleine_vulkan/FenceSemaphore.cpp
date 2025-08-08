@@ -1,4 +1,4 @@
-﻿#include "baleine_vulkan/FenceSemaphore.h"
+#include "baleine_vulkan/FenceSemaphore.h"
 
 namespace balkan {
 

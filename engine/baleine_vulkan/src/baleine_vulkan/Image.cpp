@@ -1,4 +1,4 @@
-﻿#include "baleine_vulkan/Image.h"
+#include "baleine_vulkan/Image.h"
 
 #include <stdexcept>
 #include <utility>

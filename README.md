@@ -1,4 +1,4 @@
-﻿# Baleine Engine 🐋
+# Baleine Engine 🐋
 
 Hello! This is a game engine project for personal learning powered by C++ and Vulkan.
 

@@ -1,4 +1,4 @@
-﻿if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/auto/CMakeLists.txt")
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/auto/CMakeLists.txt")
     add_subdirectory(auto)
 else()
     message(STATUS "Skipping auto (CMakeLists.txt not found)")

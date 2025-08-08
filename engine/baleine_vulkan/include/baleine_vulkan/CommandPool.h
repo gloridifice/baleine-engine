@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "baleine_type/memory.h"
 #include "vulkan/vulkan.h"

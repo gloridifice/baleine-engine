@@ -1,7 +1,3 @@
-﻿//
-// Created by koiro on 2025/7/14.
-//
-
 #pragma once
 
 #include <vulkan/vulkan.h>

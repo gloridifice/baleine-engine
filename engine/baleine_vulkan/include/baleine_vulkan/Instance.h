@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "VkBootstrap.h"
 #include "baleine_type/memory.h"

@@ -1,4 +1,4 @@
-﻿//
+//
 // Created by yifanlin on 2025/7/7.
 //
 
@@ -10,9 +10,6 @@
 #include "SDL3/SDL.h"
 #include "SDL3/SDL_vulkan.h"
 #include "cassert"
-
-// #include "vk_types.h"
-// #include "vk_initializers.h"
 
 BaleineEngine* LOADED_ENGINE = nullptr;
 
@@ -35,6 +32,7 @@ void BaleineEngine::init() {
     window = SDL_CreateWindow("Baleine Engine", window_extent.width,
                               window_extent.height, window_flags);
 
+    
     render_state = std::make_unique<Renderer>();
     render_state->init(*window, window_extent.width, window_extent.height);
 
