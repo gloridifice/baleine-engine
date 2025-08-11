@@ -17,11 +17,15 @@ The root folder is rust project for building C++ project. See the section below.
 
 ## Build & Run
 
-This project uses a rust project for automatically task and dependencies management for C++ project.  
+This project uses a rust project for automatically task and dependencies management for C++ project.
 
 1. [Install Rust](https://www.rust-lang.org/tools/install) & [Install CMake](https://cmake.org/download/) & [Install Vulkan SDK](https://vulkan.lunarg.com/);
-2. Clone this repository, then run `cargo run` in terminal. It will download third party libs and generate CMakeLists in `engine/third_party/auto/` folder;
-3. Then just open the `engine/` folder by your IDE and run the cmake project.
+2. Clone this repository, then run `cargo run -- setup` in terminal. It will download third party libs and generate CMakeLists in `engine/third_party/auto/` folder, and build cmake project under `engine/build/` folder;
+3. Then just open this project's folder by your IDE (clangd is prefered).
+
+## Build argument
+
+You can see arguments' description by run `cargo run -- -h`.
 
 ## Dependencies
 
