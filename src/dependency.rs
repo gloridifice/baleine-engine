@@ -1,8 +1,8 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use std::process::Command;
-use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]
 struct DependencySpec {
@@ -17,7 +17,7 @@ struct Config {
     dependencies: HashMap<String, DependencySpec>,
 }
 
-pub fn collect_dependencies(cover_old_files: bool) -> Result<(), Box<dyn std::error::Error>> {
+pub fn collect_dependencies(cover_old_files: bool) -> anyhow::Result<()> {
     // Read the TOML file
     let toml_content = fs::read_to_string("Dependencies.toml")?;
     let config: Config = toml::from_str(&toml_content)?;
@@ -37,7 +37,7 @@ pub fn collect_dependencies(cover_old_files: bool) -> Result<(), Box<dyn std::er
         println!("Processing dependency: {}", name);
 
         let target_dir = third_party_dir.join(name);
-        
+
         if cover_old_files {
             println!("Removing existing directory: {}", target_dir.display());
             fs::remove_dir_all(&target_dir)?;
@@ -64,7 +64,12 @@ pub fn collect_dependencies(cover_old_files: bool) -> Result<(), Box<dyn std::er
             let output = git_cmd.output()?;
 
             if !output.status.success() {
-                eprintln!("Failed to clone {}: {}", name, String::from_utf8_lossy(&output.stderr));
+                eprintln!(
+                    "Failed to clone {}: {}",
+                    name,
+                    String::from_utf8_lossy(&output.stderr)
+                );
+                let _ = fs::remove_dir_all(&target_dir.join(name));
                 continue;
             }
 
@@ -84,7 +89,10 @@ pub fn collect_dependencies(cover_old_files: bool) -> Result<(), Box<dyn std::er
             cmake_content.push_str(&format!("# Add subdirectory for {}\n", name));
             cmake_content.push_str(&format!("add_subdirectory({}{})\n\n", name, details));
         } else {
-            cmake_content.push_str(&format!("# Note: {} does not have CMakeLists.txt - manual configuration may be needed\n", name));
+            cmake_content.push_str(&format!(
+                "# Note: {} does not have CMakeLists.txt - manual configuration may be needed\n",
+                name
+            ));
             cmake_content.push_str(&format!("# add_subdirectory({}{})\n\n", name, details));
         }
     }

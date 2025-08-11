@@ -6,48 +6,51 @@ namespace baleine {
 
 using Mutex = absl::Mutex;
 
-template <typename T>
+template<typename T>
 class LockGuard {
     T& value;
     absl::MutexLock mutex_lock;
 
-public:
+  public:
     ~LockGuard() = default;
-    explicit LockGuard(absl::Mutex& mutex, T& value): mutex_lock(&mutex), value(value) {
-    }
+
+    explicit LockGuard(absl::Mutex& mutex, T& value) :
+        mutex_lock(&mutex),
+        value(value) {}
 
     T& operator*() const {
         return value;
     }
 };
 
-template <typename T>
+template<typename T>
 class ReadGuard {
     const T& value;
     absl::ReaderMutexLock mutex_lock;
 
-public:
+  public:
     ~ReadGuard() = default;
-    explicit ReadGuard(absl::Mutex& mutex, T& value): mutex_lock(&mutex), value(value) {
-    }
-    
+
+    explicit ReadGuard(absl::Mutex& mutex, T& value) :
+        mutex_lock(&mutex),
+        value(value) {}
+
     const T& operator*() const {
         return value;
     }
 };
 
-template <typename T>
+template<typename T>
 class MutexVal {
-private:
+  private:
     Mutex mutex {};
     T value;
 
-public:
+  public:
     ~MutexVal() = default;
-    explicit MutexVal(T&& value): value(value) {
-        
-    }
-    
+
+    explicit MutexVal(T&& value) : value(value) {}
+
     LockGuard<T> lock() {
         return LockGuard<T>(mutex, value);
     }
@@ -60,6 +63,7 @@ public:
         auto guard = val.lock();
         value = std::move(*guard);
     }
+
     MutexVal& operator=(MutexVal&& val) noexcept {
         auto guard = val.lock();
         value = std::move(*guard);
@@ -70,4 +74,4 @@ public:
     MutexVal& operator=(const MutexVal&) = delete;
 };
 
-} // namespace bal
+} // namespace baleine
