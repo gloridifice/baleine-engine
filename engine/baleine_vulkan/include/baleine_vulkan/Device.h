@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CommandPool.h"
 #include "FenceSemaphore.h"

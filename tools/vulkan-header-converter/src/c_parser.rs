@@ -83,6 +83,7 @@ impl CParser {
     // ================== Struct ==============================
 
     // Helper function to debug node structure
+    #[allow(unused)]
     fn print_node_structure(&self, node: Node, source_code: &str, depth: usize) {
         let indent = "  ".repeat(depth);
         println!(

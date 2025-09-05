@@ -1,4 +1,4 @@
-﻿#include "baleine_vulkan/Device.h"
+#include "baleine_vulkan/Device.h"
 
 #include "baleine_type/functional.h"
 #include "baleine_type/vector.h"

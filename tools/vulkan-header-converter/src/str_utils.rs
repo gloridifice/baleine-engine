@@ -59,12 +59,76 @@ where
 pub fn camel_to_snake(input: &str) -> String {
     let mut result = String::new();
 
+    let mut last_char: Option<char> = None;
     for (i, ch) in input.chars().enumerate() {
-        if ch.is_uppercase() && i > 0 {
+        if ch.is_uppercase() && last_char.is_some_and(|it| it.is_lowercase()) && i > 0 {
             result.push('_');
         }
+        last_char = Some(ch);
         result.push(ch.to_lowercase().next().unwrap());
     }
 
     result
+}
+
+/// Helper struct for buiding Cpp style String
+pub struct StringBuilder {
+    tab_count: u32,
+    content: String,
+}
+
+impl StringBuilder {
+    pub fn new() -> Self {
+        Self {
+            tab_count: 0,
+            content: String::new(),
+        }
+    }
+
+    pub fn scope(&mut self, before_scope: &str, with_semicolon: bool, fun: impl FnOnce(&mut Self)) {
+        match before_scope {
+            "" => self.line("{"),
+            _ => self.line(&format!("{} {{", before_scope)),
+        }
+        self.tab();
+        fun(self);
+        self.end_tab();
+
+        self.line(if with_semicolon { "};" } else { "}" });
+    }
+
+    pub fn tab(&mut self) {
+        self.tab_count += 1;
+    }
+
+    pub fn end_tab(&mut self) {
+        if self.tab_count > 0 {
+            self.tab_count -= 1;
+        }
+    }
+
+    pub fn clear_tab(&mut self) {
+        self.tab_count = 0;
+    }
+
+    pub fn push_str(&mut self, v: &str) {
+        self.content.push_str(v);
+    }
+
+    /// Auto tab and \n
+    pub fn line(&mut self, v: &str) {
+        for _ in 0..self.tab_count {
+            self.content.push_str("    ");
+        }
+        self.content.push_str(v);
+        self.content.push('\n');
+    }
+
+    pub fn take_result(self) -> String {
+        self.content
+    }
+
+    pub fn clone_result(&self) -> String {
+        self.content.clone()
+    }
 }

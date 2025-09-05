@@ -1,12 +1,13 @@
-﻿find_package(Vulkan REQUIRED)
+find_package(Vulkan REQUIRED)
 
-add_library(BaleineRender
-        src/baleine_render/Renderer.cpp
-)
+add_library(BaleineRender INTERFACE
+        include/baleine_render/baleine_render.h)
 
-target_include_directories(BaleineRender PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(BaleineRender INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-target_link_libraries(BaleineRender PUBLIC
+set_target_properties(BaleineRender PROPERTIES LINKER_LANGUAGE CXX)
+
+target_link_libraries(BaleineRender INTERFACE
         # Workspace
         BaleineType
         BaleineVulkan
@@ -17,4 +18,5 @@ target_link_libraries(BaleineRender PUBLIC
         GPUOpen::VulkanMemoryAllocator
         fmt::fmt
         vk-bootstrap::vk-bootstrap
+        VulkanHpp
 )

@@ -1,4 +1,4 @@
-﻿
+
 find_package(Vulkan REQUIRED)
 
 add_library(BaleineVulkan

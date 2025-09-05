@@ -1,4 +1,4 @@
-﻿cmake-build-debug
+cmake-build-debug
 cmake-build-debug-visual-studio
 build
 
@@ -7,3 +7,5 @@ desktop.ini
 
 target
 debug
+
+.cache

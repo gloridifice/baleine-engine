@@ -1,4 +1,4 @@
-﻿#include "baleine_vulkan/vk_shared/vk_initializers.h"
+#include "baleine_vulkan/vk_shared/vk_initializers.h"
 #include "baleine_vulkan/vk_shared/vk_utils.h"
 
 void vkutils::transition_image(VkCommandBuffer cmd, VkImage image, VkImageLayout current_layout,

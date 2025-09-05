@@ -1,4 +1,4 @@
-﻿
+
 #include "baleine_vulkan/RenderState.h"
 
 #include "VkBootstrap.h"

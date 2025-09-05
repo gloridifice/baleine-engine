@@ -1,4 +1,4 @@
-﻿
+
 #include "baleine_vulkan/CommandPool.h"
 
 #include "baleine_vulkan/CommandBuffer.h"

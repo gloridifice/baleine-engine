@@ -1,4 +1,4 @@
-﻿#include "baleine_vulkan/vk_shared/vk_initializers.h"
+#include "baleine_vulkan/vk_shared/vk_initializers.h"
 
 //> init_cmd
 VkCommandPoolCreateInfo vkinit::command_pool_create_info(uint32_t queueFamilyIndex,

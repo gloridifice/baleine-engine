@@ -1,4 +1,4 @@
-﻿
+
 #include "baleine_vulkan/Instance.h"
 
 balkan::Instance::Instance(const char* app_name) {
