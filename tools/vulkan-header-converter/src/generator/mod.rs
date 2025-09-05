@@ -98,7 +98,7 @@ pub static PRIMITIVE_MAP: LazyLock<HashMap<&'static str, &'static str>> = LazyLo
 
 #[derive(Clone)]
 pub enum VkType {
-    VkInfoStruct,
+    VkSTypedStruct,
     VkFlagsEnum,
     VkNormalStruct,
     VkNormalEnum,
@@ -125,11 +125,31 @@ impl VkType {
             return VkType::VkBool32;
         }
         if name.starts_with("Vk") {
-            if name.ends_with("Flags") || name.ends_with("FlagBits") {
+            if [
+                "Flags",
+                "FlagBits",
+                "FlagsKHR",
+                "FlagBitsKHR",
+                "FlagsEXT",
+                "FlagBitsEXT",
+            ]
+            .iter()
+            .any(|it| name.ends_with(it))
+            {
                 return VkType::VkFlagsEnum;
             }
-            if name.ends_with("CreateInfo") {
-                return VkType::VkInfoStruct;
+            if [
+                "Info",
+                "Info2",
+                "InfoKHR",
+                "InfoEXT",
+                "Properties",
+                "Features",
+            ]
+            .iter()
+            .any(|it| name.ends_with(it))
+            {
+                return VkType::VkSTypedStruct;
             }
             return VkType::VkOthers;
         }
@@ -147,14 +167,14 @@ impl VkType {
             Others => name.to_string(),
             VkOthers => name.to_string(),
             VkBool32 => "bool".to_string(),
-            VkInfoStruct | VkNormalStruct | VkNormalEnum => name.replace("Vk", ""),
+            VkSTypedStruct | VkNormalStruct | VkNormalEnum => name.replace("Vk", ""),
         }
     }
 
     pub fn cast_variable(&self, raw_type_name: &str, new_variable_name: &str) -> String {
         use VkType::*;
         match self {
-            VkInfoStruct | VkNormalStruct => format!("{}.raw()", new_variable_name),
+            VkSTypedStruct | VkNormalStruct => format!("{}.raw()", new_variable_name),
             VkFlagsEnum | VkNormalEnum => {
                 format!("static_cast<{}>({})", raw_type_name, new_variable_name)
             }
